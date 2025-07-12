@@ -4,8 +4,8 @@ from src.utils import tmsnow
 from beanie import Document
 from typing import Optional
 
-from pydantic import \
-    Field, EmailStr, HttpUrl
+from pydantic import Field, \
+    EmailStr, HttpUrl, ConfigDict
 
 
 class Stats(Model):
@@ -32,6 +32,8 @@ class User(Document):
     created_at: Optional[int] = Field(
         ..., default_factory=tmsnow
     )
+
+    model_config = ConfigDict(populate_by_name=True)
 
     def to_dict(self, **kwargs) -> dict:
         return self.model_dump(mode='json', **kwargs)
