@@ -13,7 +13,9 @@ timeout = aiohttp.ClientTimeout(total=10)
 async def email_exists(email: str) -> bool:
     url = 'https://api.2ip.ua/email.json'
 
-    async with aiohttp.ClientSession(timeout=timeout) as session:
+    async with aiohttp.ClientSession(
+        timeout=timeout,  # need to add a proxy
+    ) as session:
         try:
             params = {'email': email}
             async with session.get(url, params=params) as response:
@@ -22,8 +24,11 @@ async def email_exists(email: str) -> bool:
 
                 response.raise_for_status()
                 data = await response.json()
+        except aiohttp.ClientResponseError as e:
+            logger.error(f'[{e.status}][{e.message}] :: {e.request_info.url}')
+            return False
         except aiohttp.ClientError as e:
-            logger.error(f'Error checking email existence: {e}')
+            logger.error(e)
             return False
 
     return bool(data.get('exist'))
