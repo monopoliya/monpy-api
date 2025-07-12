@@ -2,6 +2,17 @@ from typing import Optional
 from pydantic_settings import BaseSettings
 
 
+ALLOWED_DOMAINS = [
+    'gmail.com',
+    'outlook.com',
+    'mail.ru',
+    'yandex.ru',
+    'yahoo.com',
+    'hotmail.com',
+    'icloud.com'
+]
+
+
 class Config(BaseSettings):
     debug: bool = False
 
@@ -13,6 +24,9 @@ class Config(BaseSettings):
 
     # origins for CORS
     allowed_origin: Optional[str] = '*'
+
+    # jwt secret key
+    jwt_secret: str = 'your-jwt-secret-key'
 
     class Config:
         env_file = '.env'

@@ -2,9 +2,7 @@ from src.model import Model
 from pydantic import ConfigDict
 from typing import Generic, TypeVar
 
-__all__ = (
-    'Paginated'
-)
+__all__ = ('Paginated',)
 
 T = TypeVar('T')
 

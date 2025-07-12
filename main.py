@@ -1,6 +1,9 @@
 from config import config
 from src.cache import init_redis
 
+# routes imports
+from src.apps import users
+
 import os
 import uvicorn
 
@@ -16,7 +19,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 async def lifespan(_: FastAPI):
     client = AsyncIOMotorClient(config.mongo_uri)
     await init_beanie(database=client.monopoly, document_models=[
-        # Add your Beanie document models here
+        'src.apps.users.models.User',
     ])
 
     if config.redis_uri:
@@ -45,6 +48,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"]
 )
+
+# include routers
+app.include_router(users.router)
 
 
 if __name__ == '__main__':

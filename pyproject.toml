@@ -14,3 +14,38 @@ dependencies = [
     "uvicorn>=0.35.0",
     "websockets>=15.0.1",
 ]
+
+[dependency-groups]
+dev = [
+    "ruff==0.12.3",
+]
+
+[tool.ruff]
+line-length = 80
+target-version = "py313"
+
+lint.select = [
+    "F",
+    "E",
+    "W",
+    "N",
+    "B",
+    "RUF"
+]
+
+lint.ignore = [
+    "B904"
+]
+
+exclude = [
+    ".git",
+    ".idea",
+    ".vscode",
+    "venv/",
+    ".venv",
+    ".ruff_cache",
+    "__pycache__"
+]
+
+[tool.ruff.format]
+quote-style = "single"

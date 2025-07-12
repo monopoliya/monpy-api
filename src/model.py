@@ -1,8 +1,6 @@
 from pydantic import BaseModel, ConfigDict
 
-__all__ = (
-    'Model'
-)
+__all__ = ('Model',)
 
 
 class Model(BaseModel):

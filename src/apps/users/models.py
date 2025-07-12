@@ -15,10 +15,11 @@ class Stats(Model):
 
 
 class User(Document):
-    id: str
+    id: int
     name: str
     email: EmailStr
     avatar: Optional[HttpUrl] = None
+    password: str = Field(exclude=True)
 
     stats: Stats = Field(
         ..., default_factory=Stats
@@ -34,7 +35,7 @@ class User(Document):
 
     def to_dict(self, **kwargs) -> dict:
         return self.model_dump(mode='json', **kwargs)
-    
+
     def set_last_login(self) -> None:
         self.last_login = tmsnow()
 
