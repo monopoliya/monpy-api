@@ -1,9 +1,10 @@
 from .models import User
 from .forms import UserCreate, UserLogin
 
-from config import config, ALLOWED_DOMAINS
+from config import ALLOWED_DOMAINS
 from .public import UserPublic, AuthResponse
 
+from src.jwt import create_token, decode
 from src.email import email_exists, send_verification_email
 
 import jwt
@@ -12,11 +13,6 @@ import hashlib
 from fastapi import APIRouter, Header, HTTPException
 
 router = APIRouter(prefix='/users', tags=['users'])
-
-
-def _create_token(user_id: int, purpose: str = 'auth') -> str:
-    payload = {'id': user_id, 'purpose': purpose}
-    return jwt.encode(payload, config.jwt_secret, algorithm='HS256')
 
 
 @router.post(
@@ -32,6 +28,9 @@ async def register(user: UserCreate):
     if existing:
         raise HTTPException(400, 'User already exists')
 
+    if await email_exists(user.email) is False:
+        raise HTTPException(400, 'Email does not exist')
+
     last = await User.find().sort('-id').limit(1).to_list(1)
     next_id = last[0].id + 1 if last else 0
 
@@ -44,17 +43,14 @@ async def register(user: UserCreate):
         email=user.email,
         password=hashed
     )
-
+    # adding new user to db
     await new_user.insert()
 
-    if not await email_exists(new_user.email):
-        raise HTTPException(400, 'Email does not exist')
-
-    verify_token = _create_token(new_user.id, 'verify')
+    verify_token = create_token(new_user.id, 'verify')
     # Here you would send the verification email with the token
     await send_verification_email(new_user.email, verify_token)
 
-    token = _create_token(new_user.id)
+    token = create_token(new_user.id)
     return {'token': token, 'user': new_user}
 
 
@@ -77,7 +73,7 @@ async def login(credentials: UserLogin):
     user.set_last_login()
     await user.save()
 
-    token = _create_token(user.id)
+    token = create_token(user.id)
     return {'token': token, 'user': user}
 
 
@@ -97,7 +93,7 @@ async def get_me(x_user_id: int = Header(..., alias='x-user-id')):
 )
 async def verify_email(token: str):
     try:
-        data = jwt.decode(token, config.jwt_secret, algorithms=['HS256'])
+        data = decode(token)
     except jwt.ExpiredSignatureError:
         raise HTTPException(400, 'Invalid token')
 
