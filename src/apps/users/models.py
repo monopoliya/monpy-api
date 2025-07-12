@@ -27,6 +27,7 @@ class User(Document):
 
     is_admin: bool = False
     is_active: bool = True
+    is_verified: bool = False
 
     last_login: Optional[int] = None
     created_at: Optional[int] = Field(

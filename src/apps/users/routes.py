@@ -4,6 +4,8 @@ from .forms import UserCreate, UserLogin
 from config import config, ALLOWED_DOMAINS
 from .public import UserPublic, AuthResponse
 
+from src.email import email_exists, send_verification_email
+
 import jwt
 import hashlib
 
@@ -12,8 +14,9 @@ from fastapi import APIRouter, Header, HTTPException
 router = APIRouter(prefix='/users', tags=['users'])
 
 
-def _create_token(user_id: int) -> str:
-    return jwt.encode({'id': user_id}, config.jwt_secret, algorithm='HS256')
+def _create_token(user_id: int, purpose: str = 'auth') -> str:
+    payload = {'id': user_id, 'purpose': purpose}
+    return jwt.encode(payload, config.jwt_secret, algorithm='HS256')
 
 
 @router.post(
@@ -32,10 +35,25 @@ async def register(user: UserCreate):
     last = await User.find().sort('-id').limit(1).to_list(1)
     next_id = last[0].id + 1 if last else 0
 
+    # hash the password for security
     hashed = hashlib.md5(user.password.encode()).hexdigest()
-    new_user = User(id=next_id, name=user.name, email=user.email, password=hashed)  # noqa: E501
+
+    new_user = User(
+        id=next_id,
+        name=user.name,
+        email=user.email,
+        password=hashed
+    )
 
     await new_user.insert()
+
+    if not await email_exists(new_user.email):
+        raise HTTPException(400, 'Email does not exist')
+
+    verify_token = _create_token(new_user.id, 'verify')
+    # Here you would send the verification email with the token
+    await send_verification_email(new_user.email, verify_token)
+
     token = _create_token(new_user.id)
     return {'token': token, 'user': new_user}
 
@@ -53,6 +71,9 @@ async def login(credentials: UserLogin):
     if hashed != user.password:
         raise HTTPException(401, 'Invalid credentials')
 
+    if not user.is_verified:
+        raise HTTPException(403, 'Email not verified')
+
     user.set_last_login()
     await user.save()
 
@@ -69,3 +90,25 @@ async def get_me(x_user_id: int = Header(..., alias='x-user-id')):
     if not user:
         raise HTTPException(404, 'User not found')
     return user
+
+
+@router.get(
+    path='/verify/{token}'
+)
+async def verify_email(token: str):
+    try:
+        data = jwt.decode(token, config.jwt_secret, algorithms=['HS256'])
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(400, 'Invalid token')
+
+    if data.get('purpose') != 'verify':
+        raise HTTPException(400, 'Invalid token')
+
+    user = await User.find_one(User.id == data.get('id'))
+    if not user:
+        raise HTTPException(404, 'User not found')
+
+    user.is_verified = True
+    await user.save()
+
+    return {'detail': 'Email verified successfully'}

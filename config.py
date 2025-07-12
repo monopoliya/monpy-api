@@ -28,6 +28,10 @@ class Config(BaseSettings):
     # jwt secret key
     jwt_secret: str = 'your-jwt-secret-key'
 
+    # resend configuration
+    resend_sender: Optional[str] = None
+    resend_api_key: Optional[str] = None
+
     class Config:
         env_file = '.env'
         env_file_encoding = 'utf-8'
