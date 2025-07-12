@@ -1,3 +1,4 @@
+import json
 import resend
 import aiohttp
 
@@ -9,6 +10,32 @@ logger = get_logger(__name__)
 resend.api_key = config.resend_api_key
 timeout = aiohttp.ClientTimeout(total=10)
 
+try:
+    _proxies_path = 'src/proxies.json'
+    with open(_proxies_path, 'r', encoding='utf-8') as f:
+        _proxies: list[str] = json.load(f)
+except FileNotFoundError:
+    _proxies = {}
+
+_proxy_index = 0
+_proxy_usage = 0
+
+
+def _next_proxy() -> str | None:
+    global _proxy_index, _proxy_usage
+    if not _proxies:
+        return None
+
+    proxy = _proxies[_proxy_index]
+    logger.debug(f'🔄 Using proxy: {proxy}')
+    _proxy_usage += 1
+
+    if _proxy_usage >= 3:
+        _proxy_usage = 0
+        _proxy_index = (_proxy_index + 1) % len(_proxies)
+
+    return proxy
+
 
 async def email_exists(email: str) -> bool:
     url = 'https://api.2ip.ua/email.json'
@@ -18,7 +45,11 @@ async def email_exists(email: str) -> bool:
     ) as session:
         try:
             params = {'email': email}
-            async with session.get(url, params=params) as response:
+            async with session.get(
+                url,
+                params=params,
+                proxy=_next_proxy()
+            ) as response:
                 text = await response.text()
                 logger.debug('<<< quote raw response:\n%s', text)
 
