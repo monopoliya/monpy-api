@@ -70,7 +70,7 @@ async def send_verification_email(email: str, token: str) -> None:
         logger.warning('Resend configuration is not set')
         return
 
-    verify_link = f'http://127.0.0.1/users/verify/{token}'
+    verify_link = f'http://127.0.0.1:8000/users/verify/{token}'
 
     html = (
         '<p>Please confirm your email by clicking '
@@ -80,7 +80,7 @@ async def send_verification_email(email: str, token: str) -> None:
     params: resend.Emails.SendParams = {
         'from': config.resend_sender,
         'to': email,
-        'subject': '☑️ Confirm your email',
+        'subject': '✅ Confirm your email',
         'html': html
     }
 

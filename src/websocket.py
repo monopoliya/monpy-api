@@ -1,22 +1,23 @@
+from typing import Any
 from fastapi import WebSocket
 
 
 class WebSocketManager:
     def __init__(self):
-        self.connects: dict[str, WebSocket] = {}
+        self._connects: dict[str, list[WebSocket]] = {}
 
-    async def connect(self, websocket: WebSocket, user_id: str):
-        await websocket.accept()
-        self.connects[user_id] = websocket
+    async def connect(self, room: str, ws: WebSocket):
+        await ws.accept()
+        self._connects.setdefault(room, []).append(ws)
 
-    def disconnect(self, user_id: str):
-        if user_id in self.connects:
-            del self.connects[user_id]
+    def disconnect(self, room: str, ws: WebSocket):
+        conns = self._connects.get(room)
+        if conns and ws in conns:
+            conns.remove(ws)
 
-    async def send_to(self, user_id: str, payload: dict):
-        if user_id in self.connects:
-            websocket = self.connects[user_id]
-            await websocket.send_json(payload)
+    async def broadcast(self, room: str, message: list[str, Any]) -> None:
+        for ws in self._connects.get(room, []):
+            await ws.send_json(message)
 
 
 # global instance of WebSocketManager

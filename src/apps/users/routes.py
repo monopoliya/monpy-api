@@ -100,7 +100,7 @@ async def verify_email(token: str):
     if data.get('purpose') != 'verify':
         raise HTTPException(400, 'Invalid token')
 
-    user = await User.find_one(User.id == data.get('id'))
+    user = await User.find_one(User.id == data.get('user_id'))
     if not user:
         raise HTTPException(404, 'User not found')
 

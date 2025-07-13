@@ -29,7 +29,7 @@ class Config(BaseSettings):
     jwt_secret: str = 'your-jwt-secret-key'
 
     # resend configuration
-    resend_sender: Optional[str] = None
+    resend_sender: Optional[str] = 'support@monopoliya.fun'
     resend_api_key: Optional[str] = None
 
     class Config:

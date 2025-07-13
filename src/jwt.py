@@ -14,5 +14,5 @@ def decode(token: str) -> dict:
 
 
 def create_token(user_id: int, purpose: str = 'auth') -> str:
-    payload = {'id': user_id, 'purpose': purpose}
+    payload = {'user_id': user_id, 'purpose': purpose}
     return encode(payload)

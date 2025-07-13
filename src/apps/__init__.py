@@ -1,3 +1,3 @@
-from . import users
+from . import games, users
 
-__all__ = ('users',)
+__all__ = ('games', 'users')

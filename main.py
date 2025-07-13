@@ -2,7 +2,7 @@ from config import config
 from src.cache import init_redis
 
 # routes imports
-from src.apps import users
+from src.apps import games, users
 
 import os
 import uvicorn
@@ -20,6 +20,7 @@ async def lifespan(_: FastAPI):
     client = AsyncIOMotorClient(config.mongo_uri)
     await init_beanie(database=client.monopoly, document_models=[
         'src.apps.users.models.User',
+        'src.apps.games.models.Game',
     ])
 
     if config.redis_uri:
@@ -50,6 +51,7 @@ app.add_middleware(
 )
 
 # include routers
+app.include_router(games.router)
 app.include_router(users.router)
 
 
