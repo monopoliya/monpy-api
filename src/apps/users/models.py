@@ -4,8 +4,8 @@ from src.utils import tmsnow
 from beanie import Document
 from typing import Optional
 
-from pydantic import Field, \
-    EmailStr, HttpUrl, ConfigDict
+from pydantic import \
+    Field, EmailStr, ConfigDict
 
 
 class Stats(Model):
@@ -18,7 +18,7 @@ class User(Document):
     id: int
     name: str
     email: EmailStr
-    avatar: Optional[HttpUrl] = None
+    avatar: Optional[str] = None
     password: str = Field(exclude=True)
 
     stats: Stats = Field(

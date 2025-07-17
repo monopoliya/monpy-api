@@ -3,7 +3,7 @@ from .models import \
 
 from src.utils import tmsnow
 from src.game import GameService
-from src.websocket import manager
+from src.apps.websocket import manager
 
 from src.apps.depends import get_user_id
 

@@ -1,5 +1,5 @@
-from src.jwt import decode
 from src.logger import get_logger
+from src.apps.security import decode
 
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPBearer, \
@@ -12,7 +12,7 @@ http_bearer = HTTPBearer(auto_error=False)
 
 
 def login_required(
-    header: HTTPAuthorizationCredentials = Depends(http_bearer)  # noqa: B008
+    header: HTTPAuthorizationCredentials = Depends(http_bearer)
 ) -> str:
     if not (header and header.scheme and header.credentials):
         raise HTTPException(403, 'Forbidden')

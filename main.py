@@ -1,5 +1,5 @@
 from config import config
-from src.cache import init_redis
+from src.services.cache import init_redis
 
 # routes imports
 from src.apps import games, users

@@ -13,13 +13,22 @@ ALLOWED_DOMAINS = [
 ]
 
 
+ALLOWED_FILE_EXTS = [
+    '.jpg',
+    '.jpeg',
+    '.png',
+    '.gif',
+    '.webp'
+]
+
+
 class Config(BaseSettings):
     debug: bool = False
 
     # beanie (MongoDB ODM)
     mongo_uri: str = 'mongodb://localhost:27017/'
 
-    # redis (configuration)
+    # redis (conf)
     redis_uri: Optional[str] = None
 
     # origins for CORS
@@ -28,9 +37,16 @@ class Config(BaseSettings):
     # jwt secret key
     jwt_secret: str = 'your-jwt-secret-key'
 
-    # resend configuration
+    # resend conf
     resend_sender: Optional[str] = 'support@monopoliya.fun'
     resend_api_key: Optional[str] = None
+
+    # AWS S3 conf
+    aws_region_name: str = 'eu-central-1'
+    aws_bucket_name: str = 'cdn.monopoliya.fun'
+
+    aws_access_key: str
+    aws_secret_key: str
 
     class Config:
         env_file = '.env'

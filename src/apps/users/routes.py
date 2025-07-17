@@ -1,16 +1,23 @@
-from .models import User
-from .forms import UserCreate, UserLogin
-
-from config import ALLOWED_DOMAINS
-from .public import UserPublic, AuthResponse
-
-from src.jwt import create_token, decode
-from src.email import email_exists, send_verification_email
-
 import jwt
 import hashlib
 
-from fastapi import APIRouter, Header, HTTPException
+import mimetypes
+from pathlib import Path
+
+from .models import User
+from .forms import UserCreate, UserLogin
+from .public import UserPublic, AuthResponse
+
+from src.services.s3client import s3
+from src.services.snowflake import Snowflake
+from config import ALLOWED_DOMAINS, ALLOWED_FILE_EXTS
+
+from src.apps.depends import login_required
+from src.apps.security import create_token, decode
+from src.services.email import email_exists, send_verification_email
+
+from fastapi import APIRouter, Request, \
+    UploadFile, Depends, HTTPException
 
 router = APIRouter(prefix='/users', tags=['users'])
 
@@ -31,18 +38,21 @@ async def register(user: UserCreate):
     if await email_exists(user.email) is False:
         raise HTTPException(400, 'Email does not exist')
 
-    last = await User.find().sort('-id').limit(1).to_list(1)
-    next_id = last[0].id + 1 if last else 0
+    # generate a unique user ID
+    # using Snowflake ID generator
+    user_id = Snowflake.generate()
 
     # hash the password for security
     hashed = hashlib.md5(user.password.encode()).hexdigest()
 
     new_user = User(
-        id=next_id,
+        id=user_id,
         name=user.name,
         email=user.email,
         password=hashed
     )
+
+    new_user.set_last_login()
     # adding new user to db
     await new_user.insert()
 
@@ -81,8 +91,8 @@ async def login(credentials: UserLogin):
     path='/me',
     response_model=UserPublic
 )
-async def get_me(x_user_id: int = Header(..., alias='x-user-id')):
-    user = await User.find_one(User.id == x_user_id)
+async def get_me(payload: dict = Depends(login_required)):
+    user = await User.find_one(User.id == payload['user_id'])
     if not user:
         raise HTTPException(404, 'User not found')
     return user
@@ -100,7 +110,7 @@ async def verify_email(token: str):
     if data.get('purpose') != 'verify':
         raise HTTPException(400, 'Invalid token')
 
-    user = await User.find_one(User.id == data.get('user_id'))
+    user = await User.get(data['user_id'])
     if not user:
         raise HTTPException(404, 'User not found')
 
@@ -108,3 +118,70 @@ async def verify_email(token: str):
     await user.save()
 
     return {'detail': 'Email verified successfully'}
+
+
+@router.patch(
+    path='/avatar',
+    response_model=dict
+)
+async def update_avatar(
+    request: Request,
+    upl: UploadFile,
+    payload: dict = Depends(login_required)
+):
+    max_size = 3 * 1024 * 1024  # 3MB in bytes
+    if upl.size and upl.size > max_size:
+        raise HTTPException(400, 'File size exceeds limit of 3MB')
+
+    ext = Path(upl.filename).suffix.lower()
+    if ext not in ALLOWED_FILE_EXTS:
+        raise HTTPException(400, f'Invalid file extension: {ext}')
+
+    file_bytes = await upl.read()
+    content_type, _ = mimetypes.guess_type(upl.filename)
+
+    user_id = str(payload['user_id'])
+    hashed_name = hashlib.md5(user_id.encode()).hexdigest()
+
+    hashed_filename = f'{hashed_name}{ext}'
+
+    try:
+        keys = await s3.list_objects(
+            object_id=user_id, category='avatars'
+        )
+
+        for key in keys:
+            old_file = Path(key).name
+            # skip if the file is the same
+            if old_file != hashed_filename:
+                await s3.delete_object(
+                    object_id=user_id,
+                    filename=old_file,
+                    category='avatars'
+                )
+
+    except Exception:
+        # Log but don't block upload
+        pass
+
+    await s3.upload(
+        bytes=file_bytes,
+        filename=hashed_filename,
+        object_id=user_id,
+        content_type=content_type,
+        category='avatars'
+    )
+
+    user = await User.get(user_id)
+    if not user:
+        raise HTTPException(404, 'User not found')
+
+    # save avatar key in db
+    user.avatar = hashed_filename
+    await user.save()
+
+    # construct URL dynamically
+    base_url = 'https://cdn.monopoliya.fun'
+    avatar_url = f'{base_url}/avatars/{user_id}/{hashed_filename}'
+
+    return {'url': avatar_url}
