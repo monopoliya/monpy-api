@@ -12,4 +12,4 @@ class Model(BaseModel):
         return self.model_dump_json(indent=2)
 
     def to_dict(self, **kwargs) -> dict:
-        return self.model_dump(mode='json' **kwargs)
+        return self.model_dump(mode='json', **kwargs)
